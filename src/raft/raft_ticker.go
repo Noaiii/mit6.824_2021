@@ -8,7 +8,7 @@ const leaderHeartBeatDuration = time.Duration(150) * time.Millisecond
 
 // The ticker for leader to send AppendEntries requests periodly
 func (rf *Raft) leaderTicker() {
-	for rf.killed() == false {
+	for !rf.killed() {
 		time.Sleep(leaderHeartBeatDuration)
 		rf.mu.Lock()
 		r := rf.role
@@ -26,8 +26,10 @@ func (rf *Raft) leaderTicker() {
 					entries = append(entries, rf.logs[j])
 				}
 				leaderCommitIndex := rf.commitIndex
-				go rf.sendHeartbeat(i, t, prevLogIndex, prevLogTerm, entries, leaderCommitIndex)
+				go rf.sendHeartbeat(i, t, prevLogIndex, prevLogTerm,
+					entries, leaderCommitIndex)
 			}
+			rf.persist()
 		}
 		rf.mu.Unlock()
 	}
@@ -36,7 +38,7 @@ func (rf *Raft) leaderTicker() {
 // The ticker go routine starts a new election if this peer hasn't received
 // heartsbeats recently.
 func (rf *Raft) electionTicker() {
-	for rf.killed() == false {
+	for !rf.killed() {
 		rf.mu.Lock()
 		before := rf.lastHeartbeat
 		rf.mu.Unlock()

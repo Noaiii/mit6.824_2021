@@ -14,6 +14,7 @@ type RequestVoteReply struct {
 
 // follower node response to RequestVote call.
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
+	defer rf.persist()
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	DPrintf("[RequestVote] me=%v, be asked to voted to %v, his term=%v", rf.me, args.CandidateId, args.Term)

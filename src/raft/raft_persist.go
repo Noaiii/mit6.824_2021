@@ -22,9 +22,14 @@ func (rf *Raft) persist() {
 	// rf.persister.SaveRaftState(data)
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
+	// rf.mu.Lock()
 	e.Encode(rf.me)
+	e.Encode(rf.currentTerm)
+	e.Encode(rf.votedFor)
+	e.Encode(rf.logs)
+	// rf.mu.Unlock()
 	data := w.Bytes()
-	DPrintf("[persist] data=%v", data)
+	DPrintf("[persist] raft %d persist data=%v", rf.me, data)
 	rf.persister.SaveRaftState(data)
 
 }
@@ -51,10 +56,35 @@ func (rf *Raft) readPersist(data []byte) {
 	// }
 	r := bytes.NewBuffer(data)
 	d := labgob.NewDecoder(r)
+	// rf.mu.Lock()
+	// defer rf.mu.Unlock()
 	var me int
 	if d.Decode(&me) != nil {
 		DPrintf("[readPersist] error, me=%v", me)
+		return
 	} else {
 		rf.me = me
 	}
+	var currentTerm int
+	if d.Decode(&currentTerm) != nil {
+		DPrintf("[readPersist] error, currentTerm=%v", currentTerm)
+		return
+	} else {
+		rf.currentTerm = currentTerm
+	}
+	var votedFor int
+	if d.Decode(&votedFor) != nil {
+		DPrintf("[readPersist] error, votedFor=%v", votedFor)
+		return
+	} else {
+		rf.votedFor = votedFor
+	}
+	var logs []*Entry
+	if d.Decode(&logs) != nil {
+		DPrintf("[readPersist] error, logs=%v", logs)
+		return
+	} else {
+		rf.logs = logs
+	}
+	DPrintf("[persist]raft: %d read from persister success data=%v", rf.me, data)
 }

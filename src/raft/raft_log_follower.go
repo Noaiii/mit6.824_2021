@@ -27,7 +27,8 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 	// AppendEntries request from old term, ignore.
 	if args.Term < rf.currentTerm {
-		DPrintf("[AppendEntries] %v get low term from %v, myterm=%v, histerm=%v", rf.me, args.LeaderId, rf.currentTerm, args.Term)
+		DPrintf("[AppendEntries] %v get low term from %v, myterm=%v, histerm=%v",
+			rf.me, args.LeaderId, rf.currentTerm, args.Term)
 		reply.Success = false
 		reply.Term = rf.currentTerm
 		return
@@ -41,7 +42,8 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 	// check if prevLogIndex and prevLogTerm match.
 	if args.PrevLogIndex >= len(rf.logs) || rf.logs[args.PrevLogIndex].Term != args.PrevLogTerm {
-		DPrintf("[AppendEntries] dont exist prev entry, rf.entry=%+v, args.Entries=%+v", rf.logs, args.Entries)
+		DPrintf("[AppendEntries] dont exist prev entry, rf.entry=%+v, args.Entries=%+v",
+			rf.logs, args.Entries)
 		confictTermFirstIndex := -1
 		if args.PrevLogIndex < len(rf.logs) {
 			confictTerm := rf.logs[args.PrevLogIndex].Term
@@ -62,12 +64,13 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	if len(args.Entries) > 0 {
 		rf.logs = rf.logs[0 : args.PrevLogIndex+1]
 		rf.logs = append(rf.logs, args.Entries...)
+		rf.persist()
 	}
-
 	// update commitIndex.
 	oldCommit := rf.commitIndex
 	rf.commitIndex = min(args.LeaderCommitIndex, rf.getLastLogIndex())
-	DPrintf("[AppendEntries] %v try check commitIndex, oldCommit=%v, new=%v", rf.me, oldCommit, rf.commitIndex)
+	DPrintf("[AppendEntries] %v try check commitIndex, oldCommit=%v, new=%v",
+		rf.me, oldCommit, rf.commitIndex)
 
 	// if our commitIndex is updated, then we apply the logs between them.
 	if oldCommit < rf.commitIndex {

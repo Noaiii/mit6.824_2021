@@ -160,13 +160,13 @@ func (cfg *config) checkLogs(i int, m ApplyMsg) (string, bool) {
 // contents
 func (cfg *config) applier(i int, applyCh chan ApplyMsg) {
 	for m := range applyCh {
-		if m.CommandValid == false {
+		if !m.CommandValid {
 			// ignore other types of ApplyMsg
 		} else {
 			cfg.mu.Lock()
 			err_msg, prevok := cfg.checkLogs(i, m)
 			cfg.mu.Unlock()
-			if m.CommandIndex > 1 && prevok == false {
+			if m.CommandIndex > 1 && !prevok {
 				err_msg = fmt.Sprintf("server %v apply out of order %v", i, m.CommandIndex)
 			}
 			if err_msg != "" {

@@ -41,6 +41,7 @@ func (rf *Raft) startElection() {
 		DPrintf("[startElection] me=%v is leader now, term=%v", rf.me, rf.currentTerm)
 		rf.role = Leader
 		rf.leaderInitialization()
+		rf.persist()
 	}
 
 	cond.L.Unlock()

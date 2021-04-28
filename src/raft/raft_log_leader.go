@@ -21,10 +21,11 @@ func (rf *Raft) sendHeartbeat(server int, term int, prevLogIndex int, prevLogTer
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	if reply.Success == false {
+	if !reply.Success {
 		if reply.Term > rf.currentTerm {
 			rf.currentTerm = reply.Term
 			rf.role = Follower
+			rf.persist()
 			DPrintf("[sendHeartbeat] %v sendHeartbeat to %v but get a newer term, term=%v", rf.me, server, rf.currentTerm)
 		} else {
 			// decrease this server's nextIndex and retry later.
