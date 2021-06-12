@@ -20,9 +20,14 @@ func (rf *Raft) leaderTicker() {
 					continue
 				}
 				prevLogIndex := rf.nextIndex[i] - 1
+				if prevLogIndex < 1 {
+					prevLogIndex = 0
+				}
 				prevLogTerm := rf.logs[prevLogIndex].Term
+				j := rf.nextIndex[i]
+				ll := len(rf.logs)
 				entries := make([]*Entry, 0)
-				for j := rf.nextIndex[i]; j < len(rf.logs); j++ {
+				for ; j < ll; j++ {
 					entries = append(entries, rf.logs[j])
 				}
 				leaderCommitIndex := rf.commitIndex

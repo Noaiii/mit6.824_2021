@@ -31,7 +31,6 @@ func (rf *Raft) persist() {
 	data := w.Bytes()
 	DPrintf("[persist] raft %d persist data=%v", rf.me, data)
 	rf.persister.SaveRaftState(data)
-
 }
 
 //

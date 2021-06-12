@@ -33,7 +33,11 @@ func moreUpToDate(lastLogIndex1 int, lastLogTerm1 int, lastLogIndex2 int, lastLo
 }
 
 func (rf *Raft) getLastLogIndex() int {
-	return len(rf.logs) - 1
+	l := len(rf.logs)
+	if l > 0 {
+		return l - 1
+	}
+	return 0
 }
 
 func (rf *Raft) getLastLogTerm() int {

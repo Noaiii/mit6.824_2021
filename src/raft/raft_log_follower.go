@@ -48,6 +48,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		if args.PrevLogIndex < len(rf.logs) {
 			confictTerm := rf.logs[args.PrevLogIndex].Term
 			confictTermFirstIndex = args.PrevLogIndex
+			if confictTermFirstIndex < 0 {
+				confictTermFirstIndex = 1
+			}
 			for rf.logs[confictTermFirstIndex-1].Term == confictTerm {
 				confictTermFirstIndex--
 			}
