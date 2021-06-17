@@ -28,15 +28,23 @@ type InstallSnapshotReply struct {
 // 7. 丢弃整个日志
 // 8. 使用快照重置状态机（并加载快照的集群配置）
 func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapshotReply) {
+	DPrintf("[[snapshot:InstallSnapshot] raft %d receive req: %v]", rf.me, args)
 	if args.LastIncludedTerm < rf.currentTerm {
 		reply.Term = args.LastIncludedTerm
 		return
 	}
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	rf.persister.SaveSnapshot(args.Snapshot)
-	rf.dropLogs(args.LastIncludedIndex)
-	rf.LoadSnapshot()
+	msg := ApplyMsg{
+		SnapshotValid: true,
+		Snapshot:      args.Snapshot,
+		SnapshotTerm:  rf.currentTerm,
+		SnapshotIndex: args.LastIncludedIndex,
+	}
+	rf.applyCh <- msg
+	// rf.persister.SaveSnapshot(args.Snapshot)
+	// rf.dropLogs(args.LastIncludedIndex)
+	// rf.LoadSnapshot()
 	return
 }
 
@@ -50,9 +58,19 @@ func (rf *Raft) sendAInstallSnapshot(server int, args *InstallSnapshotArgs, repl
 // have more recent info since it communicate the snapshot on applyCh.
 //
 func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int, snapshot []byte) bool {
-
+	DPrintf("[snapshot:CondInstallSnapshot] raft %d  term: %d, index %d", rf.me, lastIncludedTerm, lastIncludedIndex)
 	// Your code here (2D).
-
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	if lastIncludedIndex < rf.commitIndex || lastIncludedTerm < rf.currentTerm {
+		DPrintf("[[snapshot:CondInstallSnapshot] raft %d refuse]", rf.me)
+		return false
+	}
+	DPrintf("[[snapshot:CondInstallSnapshot] raft %d  persist, trim logs]", rf.me)
+	state := rf.getStateBytes()
+	snapshotb := rf.genSnapshot(lastIncludedIndex, snapshot)
+	rf.persister.SaveStateAndSnapshot(state, snapshotb)
+	rf.dropLogs(lastIncludedIndex)
 	return true
 }
 
@@ -62,16 +80,20 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
 // that index. Raft should now trim its log as much as possible.
 func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	// Your code here (2D).
-	w := new(bytes.Buffer)
-	e := labgob.NewEncoder(w)
-	// rf.mu.Lock()
-	e.Encode(index)
-	e.Encode(rf.currentTerm)
-	e.Encode(rf.logs[:index])
-	// rf.mu.Unlock()
-	data := w.Bytes()
-	DPrintf("[persist] raft %d create snapshot up to %d data=%v", rf.me, index, data)
-	rf.persister.SaveSnapshot(data)
+	DPrintf("[snapshot:Snapshot] raft %d create snapshot up to %d data=%v", rf.me, index, snapshot)
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	state := rf.getStateBytes()
+	snapshotb := rf.genSnapshot(index, snapshot)
+	rf.persister.SaveStateAndSnapshot(state, snapshotb)
+	rf.dropLogs(index)
+	// msg := ApplyMsg{
+	// 	SnapshotValid: true,
+	// 	Snapshot:      snapshot,
+	// 	SnapshotTerm:  rf.currentTerm,
+	// 	SnapshotIndex: index,
+	// }
+	// rf.applyCh <- msg
 }
 
 // func (rf *Raft) Snapshot(index int, snapshot []byte) {
@@ -87,6 +109,17 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 // 	DPrintf("[persist] raft %d create snapshot up to %d data=%v", rf.me, index, data)
 // 	rf.persister.SaveSnapshot(data)
 // }
+func (rf *Raft) genSnapshot(index int, snapshot []byte) []byte {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+	// rf.mu.Lock()
+	e.Encode(index)
+	e.Encode(rf.currentTerm)
+	w.Write(snapshot)
+	return w.Bytes()
+}
 
 func (rf *Raft) LoadSnapshot() {
 	// Your code here (2D).

@@ -6,6 +6,19 @@ import (
 	"6.824/labgob"
 )
 
+func (rf *Raft) getStateBytes() []byte {
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+	// rf.mu.Lock()
+	e.Encode(rf.me)
+	e.Encode(rf.currentTerm)
+	e.Encode(rf.votedFor)
+	e.Encode(rf.logs)
+	// rf.mu.Unlock()
+	data := w.Bytes()
+	return data
+}
+
 //
 // save Raft's persistent state to stable storage,
 // where it can later be retrieved after a crash and restart.
@@ -20,15 +33,7 @@ func (rf *Raft) persist() {
 	// e.Encode(rf.yyy)
 	// data := w.Bytes()
 	// rf.persister.SaveRaftState(data)
-	w := new(bytes.Buffer)
-	e := labgob.NewEncoder(w)
-	// rf.mu.Lock()
-	e.Encode(rf.me)
-	e.Encode(rf.currentTerm)
-	e.Encode(rf.votedFor)
-	e.Encode(rf.logs)
-	// rf.mu.Unlock()
-	data := w.Bytes()
+	data := rf.getStateBytes()
 	DPrintf("[persist] raft %d persist data=%v", rf.me, data)
 	rf.persister.SaveRaftState(data)
 }
